@@ -6,6 +6,12 @@ import pandas as pd
 
 import yaml
 
+import texthero as hero
+from texthero import stopwords
+from nltk.corpus import stopwords
+
+import numpy as np
+
 if os.getenv("CONFIG_PATH") is None:
     config_path = "config.yml"
 else:
@@ -22,6 +28,7 @@ class Config:
         self.db_messages_table = "raw_rent_messages"
         self.raw_data_file = os.path.join(yml_conf["data_dir"], "labeled_data_corpus.csv")
         self.model_path = os.path.join(yml_conf["data_dir"], yml_conf["model_file_name"])
+        self.weights_path = os.path.join(yml_conf["data_dir"], yml_conf["weights_file_name"])
         self.tf_idf_params = yml_conf["tf_idf_params"]
 
 
@@ -83,7 +90,32 @@ class MessagesDB(DataBase):
 
         return msg
     
-    def get_messages_ids(self):
-        res = [int(i[0]) for i in self.run_sql(f"SELECT msg_id FROM {self.conf.db_messages_table} LIMIT 10000")]
+    def get_messages_ids(self, limit : int):
+        res = [int(i[0]) for i in self.run_sql(f"SELECT msg_id FROM {self.conf.db_messages_table} LIMIT {limit}")]
 
         return res
+
+class ML:
+            
+    def preprocessing(messages : np.ndarray) -> np.ndarray:
+        pd_messages = pd.Series(messages)
+        pd_messages = pd_messages.astype(str).str.lower()
+        pd_messages = pd_messages.dropna()
+
+        pd_messages = hero.remove_digits(pd_messages.astype(str))
+        pd_messages = hero.remove_punctuation(pd_messages.astype(str))
+        pd_messages = hero.remove_stopwords(pd_messages.astype(str))
+        pd_messages = hero.remove_whitespace(pd_messages.astype(str))
+
+        russian_stopwords = stopwords.words("russian")
+        pd_messages = hero.remove_stopwords(pd_messages, russian_stopwords)
+
+        greek_stopwords = stopwords.words("greek")
+        pd_messages = hero.remove_stopwords(pd_messages, greek_stopwords)
+
+        turkish_stopwords = stopwords.words("turkish")
+        pd_messages = hero.remove_stopwords(pd_messages, turkish_stopwords)
+
+        pd_messages = hero.remove_whitespace(pd_messages)
+
+        return pd_messages.values
